@@ -91,14 +91,15 @@ pipeline {
 
         // ── 4. Build obrazów ─────────────────────────────────────────────────
         stage('Build Images') {
-            agent { label 'build-agent' }
             parallel {
                 stage('Build Frontend') {
+                    agent { label 'build-agent' }
                     steps {
                         sh "docker build -t ${IMG_FRONT}:${TAG} -t ${IMG_FRONT}:latest ./frontend"
                     }
                 }
                 stage('Build Backend') {
+                    agent { label 'build-agent' }
                     steps {
                         sh "docker build -t ${IMG_BACK}:${TAG} -t ${IMG_BACK}:latest ./backend"
                     }
