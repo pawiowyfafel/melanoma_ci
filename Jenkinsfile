@@ -120,7 +120,7 @@ pipeline {
 
         // ── 6. Deploy (Ansible z VM1) ────────────────────────────────────────
         stage('Deploy to Production') {
-            agent { label 'master' }   // VM1 — ma Ansible
+            agent { label 'built-in' }   // VM1 — ma Ansible
             steps {
                 sh """
                     ansible-playbook \
