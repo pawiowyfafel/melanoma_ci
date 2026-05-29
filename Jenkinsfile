@@ -75,16 +75,12 @@ pipeline {
                 dir('frontend/tests') {
                     sh '''
                         npm install --silent
-                        npm test -- --ci 2>&1 || true
-                        npm test -- --ci --reporters=default \
-                                    --reporters=jest-junit \
-                                    2>&1 | tee ../../test-results/frontend.log
+                        npm test -- --ci || true
                     '''
                 }
             }
             post {
                 always {
-                    // jest-junit generuje junit.xml w katalogu roboczym
                     junit allowEmptyResults: true, testResults: 'frontend/tests/junit.xml'
                 }
             }
