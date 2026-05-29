@@ -1,0 +1,82 @@
+---
+# ansible/roles/docker/tasks/main.yml
+
+- name: Sprawdź czy Docker jest zainstalowany
+  command: docker --version
+  register: docker_check
+  ignore_errors: true
+  changed_when: false
+
+- name: Zainstaluj zależności apt
+  apt:
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - gnupg
+      - lsb-release
+      - python3-pip
+    state: present
+    update_cache: true
+  when: docker_check.rc != 0
+
+- name: Dodaj klucz GPG Dockera
+  apt_key:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    state: present
+  when: docker_check.rc != 0
+
+- name: Dodaj repozytorium Dockera
+  apt_repository:
+    repo: >
+      deb [arch=amd64]
+      https://download.docker.com/linux/ubuntu
+      {{ ansible_distribution_release }} stable
+    state: present
+  when: docker_check.rc != 0
+
+- name: Zainstaluj Docker CE
+  apt:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-compose-plugin
+    state: present
+    update_cache: true
+  when: docker_check.rc != 0
+
+- name: Uruchom i włącz usługę Docker
+  service:
+    name: docker
+    state: started
+    enabled: true
+
+- name: Dodaj użytkownika devops do grupy docker
+  user:
+    name: devops
+    groups: docker
+    append: true
+
+- name: Zainstaluj docker SDK dla Pythona (wymagane przez Ansible)
+  pip:
+    name:
+      - docker
+      - docker-compose
+    state: present
+
+- name: Zezwól na insecure registry (lokalny rejestr VM1)
+  copy:
+    content: |
+      {
+        "insecure-registries": ["192.168.56.10:5000"]
+      }
+    dest: /etc/docker/daemon.json
+    mode: "0644"
+  notify: Restart Docker
+
+handlers:
+  - name: Restart Docker
+    service:
+      name: docker
+      state: restarted

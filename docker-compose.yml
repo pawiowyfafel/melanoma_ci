@@ -1,0 +1,33 @@
+# docker-compose.yml  (lokalne dev)
+# Uruchamianie: docker-compose up --build
+# Uwaga: serwis AI nie jest tu uwzględniony (uruchamiany osobno na VM2).
+# Ustaw AI_SERVICE_URL na swój lokalny serwis jeśli chcesz testować AI.
+
+version: "3.9"
+
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - dev-net
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      AI_SERVICE_URL: "${AI_SERVICE_URL:-http://host.docker.internal:8000}"
+    networks:
+      - dev-net
+
+networks:
+  dev-net:
+    driver: bridge

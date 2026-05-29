@@ -1,0 +1,50 @@
+---
+# ansible/deploy-ai.yml
+# Wdraża serwis AI na VM2 (jednorazowo lub przy aktualizacji modelu).
+# Wywołanie: ansible-playbook -i inventory.ini deploy-ai.yml
+
+- name: "VM2 — Deploy serwisu AI"
+  hosts: build
+  become: true
+  vars:
+    registry: "192.168.56.10:5000"
+    ai_dir:   "/opt/melanoma-ai"
+    ai_tag:   "{{ ai_tag | default('latest') }}"
+
+  tasks:
+    - name: Utwórz katalog serwisu AI
+      file:
+        path: "{{ ai_dir }}"
+        state: directory
+        owner: devops
+        mode: "0755"
+
+    - name: Pobierz obraz serwisu AI
+      community.docker.docker_image:
+        name:   "{{ registry }}/melanoma-ai"
+        tag:    "{{ ai_tag }}"
+        source: pull
+        force_source: true
+
+    - name: Zatrzymaj stary kontener AI (jeśli działa)
+      community.docker.docker_container:
+        name:  melanoma-ai
+        state: absent
+
+    - name: Uruchom kontener AI
+      community.docker.docker_container:
+        name:    melanoma-ai
+        image:   "{{ registry }}/melanoma-ai:{{ ai_tag }}"
+        state:   started
+        restart_policy: unless-stopped
+        ports:
+          - "8000:8000"
+
+    - name: Poczekaj na health AI
+      uri:
+        url:         "http://localhost:8000/docs"
+        status_code: 200
+      retries: 15
+      delay:   6
+      register: ai_health
+      until:   ai_health.status == 200

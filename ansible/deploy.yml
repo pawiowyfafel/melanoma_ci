@@ -1,0 +1,72 @@
+---
+# ansible/deploy.yml
+# Wywołanie: ansible-playbook -i inventory.ini deploy.yml -e "image_tag=42"
+
+- name: "VM3 — Instalacja Dockera (jeśli brak)"
+  hosts: production
+  become: true
+  roles:
+    - docker
+
+- name: "VM3 — Deploy aplikacji"
+  hosts: production
+  become: true
+  vars:
+    registry:  "192.168.56.10:5000"
+    vm2_ip:    "192.168.56.20"
+    app_dir:   "/opt/melanoma"
+    image_tag: "{{ image_tag | default('latest') }}"
+
+  tasks:
+    - name: Utwórz katalog aplikacji
+      file:
+        path: "{{ app_dir }}"
+        state: directory
+        owner: devops
+        group: devops
+        mode: "0755"
+
+    - name: Skopiuj docker-compose.prod.yml
+      template:
+        src:  "{{ playbook_dir }}/../docker-compose.prod.yml"
+        dest: "{{ app_dir }}/docker-compose.yml"
+        owner: devops
+        mode: "0644"
+
+    - name: Pobierz obraz frontendu
+      community.docker.docker_image:
+        name:   "{{ registry }}/melanoma-frontend"
+        tag:    "{{ image_tag }}"
+        source: pull
+        force_source: true
+
+    - name: Pobierz obraz backendu
+      community.docker.docker_image:
+        name:   "{{ registry }}/melanoma-backend"
+        tag:    "{{ image_tag }}"
+        source: pull
+        force_source: true
+
+    - name: Uruchom docker-compose
+      community.docker.docker_compose_v2:
+        project_src: "{{ app_dir }}"
+        state: present
+        pull: always
+      environment:
+        REGISTRY: "{{ registry }}"
+        TAG:      "{{ image_tag }}"
+        VM2_IP:   "{{ vm2_ip }}"
+
+    - name: Sprawdź health backendu po deploymencie
+      uri:
+        url:  "http://{{ ansible_host }}:8080/health"
+        method: GET
+        status_code: 200
+      retries: 10
+      delay: 5
+      register: health_check
+      until: health_check.status == 200
+
+    - name: Wyświetl wynik health check
+      debug:
+        msg: "✅ Backend healthy: {{ health_check.json }}"
