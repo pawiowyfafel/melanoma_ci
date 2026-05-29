@@ -21,15 +21,17 @@
   when: docker_check.rc != 0
 
 - name: Dodaj klucz GPG Dockera
-  apt_key:
-    url: https://download.docker.com/linux/ubuntu/gpg
-    state: present
+  shell: |
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | \
+    gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+  args:
+    creates: /usr/share/keyrings/docker-archive-keyring.gpg
   when: docker_check.rc != 0
 
 - name: Dodaj repozytorium Dockera
   apt_repository:
     repo: >
-      deb [arch=amd64]
+      deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg]
       https://download.docker.com/linux/ubuntu
       {{ ansible_distribution_release }} stable
     state: present
