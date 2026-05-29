@@ -61,11 +61,11 @@
     append: true
 
 - name: Zainstaluj docker SDK dla Pythona (wymagane przez Ansible)
-  pip:
+  apt:
     name:
-      - docker
-      - docker-compose
+      - python3-docker
     state: present
+  when: docker_check.rc != 0
 
 - name: Zezwól na insecure registry (lokalny rejestr VM1)
   copy:
