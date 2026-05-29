@@ -75,7 +75,8 @@ pipeline {
                 dir('frontend/tests') {
                     sh '''
                         npm install --silent
-                        npm test -- --ci || true
+                        npm install jest-junit --silent
+                        JEST_JUNIT_OUTPUT_DIR=. JEST_JUNIT_OUTPUT_NAME=junit.xml npx jest --ci --reporters=default --reporters=jest-junit || true
                     '''
                 }
             }
